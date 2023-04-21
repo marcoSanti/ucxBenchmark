@@ -10,8 +10,9 @@ ucp_context_h bootstrapUcx(ucp_request_init_callback_t request_init, enum ucp_pa
 {
     ucp_config_t *ucp_config;
     ucp_params_t ucp_params;
-    ucs_status_t status;
     ucp_context_h ucp_context;
+    ucs_status_t status;
+
 
     memset(&ucp_params, 0, sizeof(ucp_params));
 
@@ -34,4 +35,20 @@ ucp_context_h bootstrapUcx(ucp_request_init_callback_t request_init, enum ucp_pa
     return ucp_context;
 }
 
+
+
+ucp_worker_h getUcxWorker(ucp_context_h context, uint64_t field_mask, ucs_thread_mode_t thread_mode){
+    ucp_worker_params_t worker_params;
+    ucp_worker_h ucp_worker;
+    ucs_status_t status;
+
+    memset(&worker_params, 0, sizeof(worker_params));
+
+    worker_params.field_mask = UCP_WORKER_PARAM_FIELD_THREAD_MODE; // BOH NO SO CHE SERVE> dice che serve per retrocompatibilita ma bog
+    worker_params.thread_mode = UCS_THREAD_MODE_SINGLE;            // see
+
+    status = ucp_worker_create(context, &worker_params, &ucp_worker);
+
+    return ucp_worker;
+}
 

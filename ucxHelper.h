@@ -21,6 +21,7 @@
      * Functions to make more easy to develop ucx applications
      */
 
+ 
     // TODO: vedere dove voene usato
     struct ucx_context
     {
@@ -40,12 +41,18 @@
 
 
     /**
-     * @brief this fuinction is used to generate a ucx configuration and initialize ucx
+     * @brief Thif function creates a ucp context and returns it after initializing ucx. 
      * 
-     * @return ucp_config_t* 
+     * @param request_init the function used to initialize a request (GUARDARE CHE NON SO A CHE SERVA)
+     * @param ucpParamsFields Bitmask of wich features the ucp program will use
+     * @param ucpFeature The type of comunication we want to use (ex: tag based or rma)
+     * @return ucp_context_h the context for the ucx
      */
     ucp_context_h bootstrapUcx(ucp_request_init_callback_t request_init, enum ucp_params_field ucpParamsFields, enum ucp_feature ucpFeature);
 
+
+
+    ucp_worker_h getUcxWorker(ucp_context_h context, uint64_t field_mask, ucs_thread_mode_t thread_mode);
 
 
 

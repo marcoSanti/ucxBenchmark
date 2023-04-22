@@ -27,6 +27,13 @@
     {
         int completed;
     };
+
+
+    typedef struct _peerAddrInfo{
+        uint64_t addr_len;
+        ucp_address_t *peer_addr;
+    } peerAddrInfo;
+
     /**
      * @brief Functions to check for errors in UXC api calls
      * 
@@ -55,5 +62,11 @@
     ucp_worker_h getUcxWorker(ucp_context_h context, uint64_t field_mask, ucs_thread_mode_t thread_mode);
 
 
+    peerAddrInfo *  server_handshake(uint16_t server_port, ucp_worker_h worker);
+
+    peerAddrInfo * client_handshake(const char *server, uint16_t server_port, ucp_worker_h worker);
+
+
+   ucp_ep_h getEndpoint(ucp_worker_h worker, peerAddrInfo* peer, uint64_t ep_field_mask);
 
 #endif

@@ -38,6 +38,7 @@ void reciveTestMessage(int sockd)
 	free(buffer);
 }
 
+
 /**
  * @brief this fuinction is used to generate a ucx configuration and initialize ucx
  *
@@ -58,15 +59,16 @@ ucp_context_h bootstrapUcx(ucp_request_init_callback_t request_init, enum ucp_pa
 	ucp_params.request_init = request_init;
 
 	status = ucp_config_read(NULL, NULL, &ucp_config);
+	CHKERR_ACTION(status!=UCS_OK, "[ERROR]: Unable to read configuration @ bootstrapUcx()\n", exit(EXIT_FAILURE));
 
 	// inizializzo il contesto ucp, ottenendo in output il contestop
 	status = ucp_init(&ucp_params, ucp_config, &ucp_context);
+	CHKERR_ACTION(status!=UCS_OK, "[ERROR]: Unable to read init UCX @ bootstrapUcx()\n", exit(EXIT_FAILURE));
 
 #ifdef __DEBUG__
 	ucp_config_print(ucp_config, stdout, NULL, UCS_CONFIG_PRINT_CONFIG);
 #endif
-	ucp_config_release(ucp_config); // poiche ho il contesto, non mi serve avere
-									// avere ancora in memoria la config e la posso liberare
+	ucp_config_release(ucp_config); 
 
 	return ucp_context;
 }
@@ -91,6 +93,7 @@ ucp_worker_h getUcxWorker(ucp_context_h context, uint64_t field_mask, ucs_thread
 	worker_params.thread_mode = thread_mode; // see
 
 	status = ucp_worker_create(context, &worker_params, &ucp_worker);
+	CHKERR_ACTION(status!=UCS_OK, "[ERROR]: Unable to create worker()\n", exit(EXIT_FAILURE));
 
 	return ucp_worker;
 }
@@ -111,6 +114,7 @@ peerAddrInfo *server_handshake(uint16_t server_port, ucp_worker_h worker)
 
 	optval = 1;
 	ret = setsockopt(lsock, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
+	CHKERR_ACTION(ret!=0, "[ERROR]: unable to setsockopt @server_handshake()\n", exit(EXIT_FAILURE));
 
 	inaddr.sin_family = AF_INET;
 	inaddr.sin_port = htons(server_port);
@@ -119,27 +123,39 @@ peerAddrInfo *server_handshake(uint16_t server_port, ucp_worker_h worker)
 	memset(inaddr.sin_zero, 0, sizeof(inaddr.sin_zero));
 
 	ret = bind(lsock, (struct sockaddr *)&inaddr, sizeof(inaddr));
-	ret = listen(lsock, 0);
+	CHKERR_ACTION(ret!=0, "[ERROR]: unable to bind socket @server_handshake()\n", exit(EXIT_FAILURE));
 
-	fprintf(stdout, "Waiting for connection...\n");
+	ret = listen(lsock, 0);
+	CHKERR_ACTION(ret!=0, "[ERROR]: unable to listen on socket @server_handshake()\n", exit(EXIT_FAILURE));
+
+	fprintf(stdout, "[INFO] Server is waiting for connection...\n");
 	/* Accept next connection */
 	dsock = accept(lsock, NULL, NULL);
-	fprintf(stdout, "Connection accepted!\n");
+	fprintf(stdout, "[INFO] Server has accepted a connection\n");
 
 	close(lsock);
 
 	ret = ucp_worker_get_address(worker, &local_addr, &addr_len);
-
+	CHKERR_ACTION(ret!=UCS_OK, "[ERROR]: unable to get worker local addresss @server_handshake()\n", exit(EXIT_FAILURE));
 
 	ret = send(dsock, &addr_len, sizeof(addr_len), 0);
+	CHKERR_ACTION(ret==-1, "[ERROR]: unable to send address length @ server_handshake()\n", exit(EXIT_FAILURE));
 	ret = send(dsock, local_addr, addr_len, 0);
+	CHKERR_ACTION(ret==-1, "[ERROR]: unable to send address @ server_handshake()\n", exit(EXIT_FAILURE));
 
 	ret = recv(dsock, &(peerInfo->addr_len), sizeof(peerInfo->addr_len), MSG_WAITALL);
+	CHKERR_ACTION(ret==-1, "[ERROR]: unable to recive peer address length @ server_handshake()\n", exit(EXIT_FAILURE));
+
 	peerInfo->peer_addr = malloc(peerInfo->addr_len);
 	ret = recv(dsock, peerInfo->peer_addr , peerInfo->addr_len, MSG_WAITALL);
+	CHKERR_ACTION(ret==-1, "[ERROR]: unable to recive peer address @ server_handshake()\n", exit(EXIT_FAILURE));
 
+#ifdef __DEBUG__
 	sendTestMessage(dsock, 1);
 	reciveTestMessage(dsock);
+#endif
+
+	free(local_addr);
 
 	return peerInfo;
 }
@@ -166,18 +182,29 @@ peerAddrInfo *client_handshake(const char *server, uint16_t server_port, ucp_wor
 	memset(conn_addr.sin_zero, 0, sizeof(conn_addr.sin_zero));
 
 	ret = connect(connfd, (struct sockaddr *)&conn_addr, sizeof(conn_addr));
+	CHKERR_ACTION(ret!=0, "[ERROR]: unable to connect to socket @clien_handshake()\n", exit(EXIT_FAILURE));
 
 	ret = ucp_worker_get_address(worker, &local_addr, &addr_len);
-	
+	CHKERR_ACTION(ret!=UCS_OK, "[ERROR]: unable to get worker local addresss @client_handshake()\n", exit(EXIT_FAILURE));
+
+
 	ret = recv(connfd, &(peerInfo->addr_len), sizeof(peerInfo->addr_len), MSG_WAITALL);
+	CHKERR_ACTION(ret==-1, "[ERROR]: unable to recive peer addresss length @client_handshake()\n", exit(EXIT_FAILURE));
 	peerInfo->peer_addr = malloc(peerInfo->addr_len);
 	ret = recv(connfd, peerInfo->peer_addr, peerInfo->addr_len, MSG_WAITALL);
+	CHKERR_ACTION(ret==-1, "[ERROR]: unable to recive peer addresss @client_handshake()\n", exit(EXIT_FAILURE));
 
 	ret = send(connfd, &addr_len, sizeof(addr_len), 0);
+	CHKERR_ACTION(ret==-1, "[ERROR]: unable to send local addresss length @client_handshake()\n", exit(EXIT_FAILURE));
 	ret = send(connfd, local_addr, addr_len, 0);
+	CHKERR_ACTION(ret==-1, "[ERROR]: unable to send local addresss @client_handshake()\n", exit(EXIT_FAILURE));
 
+#ifdef __DEBUG__
 	reciveTestMessage(connfd);
 	sendTestMessage(connfd, 0);
+#endif
+
+	free(local_addr);
 
 	return peerInfo;
 }
@@ -191,10 +218,8 @@ ucp_ep_h getEndpoint(ucp_worker_h worker, peerAddrInfo *peer, uint64_t ep_field_
 	ep_params.field_mask = ep_field_mask;
 	ep_params.address = peer->peer_addr;
 
-	if(ep_params.address == NULL)
-		printf("ERROR: address is null!");
-
 	status = ucp_ep_create(worker, &ep_params, &endpoint);
+	CHKERR_ACTION(status!=UCS_OK, "[ERROR]: unable to create endpoint @ getEndpoint()\n", exit(EXIT_FAILURE));
 
 	return endpoint;
 }

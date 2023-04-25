@@ -10,14 +10,17 @@
 
 void sendTestMessage(int sockd, int isServer)
 {
-	if(isServer){
+	if (isServer)
+	{
 		char *buffer = malloc(strlen(_TEST_STR_SRV_));
 		memset(buffer, 0, strlen(_TEST_STR_SRV_));
 		memcpy(buffer, _TEST_STR_SRV_, strlen(_TEST_STR_SRV_));
 
 		send(sockd, buffer, strlen(_TEST_STR_SRV_), 0);
 		free(buffer);
-	}else{
+	}
+	else
+	{
 		char *buffer = malloc(strlen(_TEST_STR_CLI_));
 		memset(buffer, 0, strlen(_TEST_STR_CLI_));
 		memcpy(buffer, _TEST_STR_CLI_, strlen(_TEST_STR_CLI_));
@@ -38,11 +41,13 @@ void reciveTestMessage(int sockd)
 	free(buffer);
 }
 
-
 /**
  * @brief this fuinction is used to generate a ucx configuration and initialize ucx
- *
- * @return ucp_config_t*
+ * 
+ * @param request_init function pointer that will initialize the variable that will tell when a request has been served
+ * @param ucpParamsFields bitmask for requested parameters for ucx
+ * @param ucpFeature Type of communication requested
+ * @return ucp_context_h 
  */
 ucp_context_h bootstrapUcx(ucp_request_init_callback_t request_init, enum ucp_params_field ucpParamsFields, enum ucp_feature ucpFeature)
 {
@@ -59,16 +64,16 @@ ucp_context_h bootstrapUcx(ucp_request_init_callback_t request_init, enum ucp_pa
 	ucp_params.request_init = request_init;
 
 	status = ucp_config_read(NULL, NULL, &ucp_config);
-	CHKERR_ACTION(status!=UCS_OK, "[ERROR]: Unable to read configuration @ bootstrapUcx()\n", exit(EXIT_FAILURE));
+	CHKERR_ACTION(status != UCS_OK, "[ERROR]: Unable to read configuration @ bootstrapUcx()\n", exit(EXIT_FAILURE));
 
 	// inizializzo il contesto ucp, ottenendo in output il contestop
 	status = ucp_init(&ucp_params, ucp_config, &ucp_context);
-	CHKERR_ACTION(status!=UCS_OK, "[ERROR]: Unable to read init UCX @ bootstrapUcx()\n", exit(EXIT_FAILURE));
+	CHKERR_ACTION(status != UCS_OK, "[ERROR]: Unable to read init UCX @ bootstrapUcx()\n", exit(EXIT_FAILURE));
 
 #ifdef __DEBUG__
 	ucp_config_print(ucp_config, stdout, NULL, UCS_CONFIG_PRINT_CONFIG);
 #endif
-	ucp_config_release(ucp_config); 
+	ucp_config_release(ucp_config);
 
 	return ucp_context;
 }
@@ -93,11 +98,18 @@ ucp_worker_h getUcxWorker(ucp_context_h context, uint64_t field_mask, ucs_thread
 	worker_params.thread_mode = thread_mode; // see
 
 	status = ucp_worker_create(context, &worker_params, &ucp_worker);
-	CHKERR_ACTION(status!=UCS_OK, "[ERROR]: Unable to create worker()\n", exit(EXIT_FAILURE));
+	CHKERR_ACTION(status != UCS_OK, "[ERROR]: Unable to create worker()\n", exit(EXIT_FAILURE));
 
 	return ucp_worker;
 }
 
+/**
+ * @brief This function performs a out of band handshake to share adresses between client and server. This function implements the server side version
+ * 
+ * @param server_port server port uint16_t format
+ * @param worker the worker that will serve the request in the future. The functyion will share this woker address
+ * @return peerAddrInfo* 
+ */
 peerAddrInfo *server_handshake(uint16_t server_port, ucp_worker_h worker)
 {
 	ucp_address_t *local_addr;
@@ -114,7 +126,7 @@ peerAddrInfo *server_handshake(uint16_t server_port, ucp_worker_h worker)
 
 	optval = 1;
 	ret = setsockopt(lsock, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
-	CHKERR_ACTION(ret!=0, "[ERROR]: unable to setsockopt @server_handshake()\n", exit(EXIT_FAILURE));
+	CHKERR_ACTION(ret != 0, "[ERROR]: unable to setsockopt @server_handshake()\n", exit(EXIT_FAILURE));
 
 	inaddr.sin_family = AF_INET;
 	inaddr.sin_port = htons(server_port);
@@ -123,10 +135,10 @@ peerAddrInfo *server_handshake(uint16_t server_port, ucp_worker_h worker)
 	memset(inaddr.sin_zero, 0, sizeof(inaddr.sin_zero));
 
 	ret = bind(lsock, (struct sockaddr *)&inaddr, sizeof(inaddr));
-	CHKERR_ACTION(ret!=0, "[ERROR]: unable to bind socket @server_handshake()\n", exit(EXIT_FAILURE));
+	CHKERR_ACTION(ret != 0, "[ERROR]: unable to bind socket @server_handshake()\n", exit(EXIT_FAILURE));
 
 	ret = listen(lsock, 0);
-	CHKERR_ACTION(ret!=0, "[ERROR]: unable to listen on socket @server_handshake()\n", exit(EXIT_FAILURE));
+	CHKERR_ACTION(ret != 0, "[ERROR]: unable to listen on socket @server_handshake()\n", exit(EXIT_FAILURE));
 
 	fprintf(stdout, "[INFO] Server is waiting for connection...\n");
 	/* Accept next connection */
@@ -136,19 +148,19 @@ peerAddrInfo *server_handshake(uint16_t server_port, ucp_worker_h worker)
 	close(lsock);
 
 	ret = ucp_worker_get_address(worker, &local_addr, &addr_len);
-	CHKERR_ACTION(ret!=UCS_OK, "[ERROR]: unable to get worker local addresss @server_handshake()\n", exit(EXIT_FAILURE));
+	CHKERR_ACTION(ret != UCS_OK, "[ERROR]: unable to get worker local addresss @server_handshake()\n", exit(EXIT_FAILURE));
 
 	ret = send(dsock, &addr_len, sizeof(addr_len), 0);
-	CHKERR_ACTION(ret==-1, "[ERROR]: unable to send address length @ server_handshake()\n", exit(EXIT_FAILURE));
+	CHKERR_ACTION(ret == -1, "[ERROR]: unable to send address length @ server_handshake()\n", exit(EXIT_FAILURE));
 	ret = send(dsock, local_addr, addr_len, 0);
-	CHKERR_ACTION(ret==-1, "[ERROR]: unable to send address @ server_handshake()\n", exit(EXIT_FAILURE));
+	CHKERR_ACTION(ret == -1, "[ERROR]: unable to send address @ server_handshake()\n", exit(EXIT_FAILURE));
 
 	ret = recv(dsock, &(peerInfo->addr_len), sizeof(peerInfo->addr_len), MSG_WAITALL);
-	CHKERR_ACTION(ret==-1, "[ERROR]: unable to recive peer address length @ server_handshake()\n", exit(EXIT_FAILURE));
+	CHKERR_ACTION(ret == -1, "[ERROR]: unable to recive peer address length @ server_handshake()\n", exit(EXIT_FAILURE));
 
 	peerInfo->peer_addr = malloc(peerInfo->addr_len);
-	ret = recv(dsock, peerInfo->peer_addr , peerInfo->addr_len, MSG_WAITALL);
-	CHKERR_ACTION(ret==-1, "[ERROR]: unable to recive peer address @ server_handshake()\n", exit(EXIT_FAILURE));
+	ret = recv(dsock, peerInfo->peer_addr, peerInfo->addr_len, MSG_WAITALL);
+	CHKERR_ACTION(ret == -1, "[ERROR]: unable to recive peer address @ server_handshake()\n", exit(EXIT_FAILURE));
 
 #ifdef __DEBUG__
 	sendTestMessage(dsock, 1);
@@ -160,6 +172,14 @@ peerAddrInfo *server_handshake(uint16_t server_port, ucp_worker_h worker)
 	return peerInfo;
 }
 
+/**
+ * @brief This function performs a out of band handshake to share adresses between client and server. This function implements the client side version
+ * 
+ * @param server Server address in string format
+ * @param server_port server port uint16_t format
+ * @param worker the worker that will serve the request in the future. The functyion will share this woker address
+ * @return peerAddrInfo* 
+ */
 peerAddrInfo *client_handshake(const char *server, uint16_t server_port, ucp_worker_h worker)
 {
 	ucp_address_t *local_addr;
@@ -182,22 +202,21 @@ peerAddrInfo *client_handshake(const char *server, uint16_t server_port, ucp_wor
 	memset(conn_addr.sin_zero, 0, sizeof(conn_addr.sin_zero));
 
 	ret = connect(connfd, (struct sockaddr *)&conn_addr, sizeof(conn_addr));
-	CHKERR_ACTION(ret!=0, "[ERROR]: unable to connect to socket @clien_handshake()\n", exit(EXIT_FAILURE));
+	CHKERR_ACTION(ret != 0, "[ERROR]: unable to connect to socket @clien_handshake()\n", exit(EXIT_FAILURE));
 
 	ret = ucp_worker_get_address(worker, &local_addr, &addr_len);
-	CHKERR_ACTION(ret!=UCS_OK, "[ERROR]: unable to get worker local addresss @client_handshake()\n", exit(EXIT_FAILURE));
-
+	CHKERR_ACTION(ret != UCS_OK, "[ERROR]: unable to get worker local addresss @client_handshake()\n", exit(EXIT_FAILURE));
 
 	ret = recv(connfd, &(peerInfo->addr_len), sizeof(peerInfo->addr_len), MSG_WAITALL);
-	CHKERR_ACTION(ret==-1, "[ERROR]: unable to recive peer addresss length @client_handshake()\n", exit(EXIT_FAILURE));
+	CHKERR_ACTION(ret == -1, "[ERROR]: unable to recive peer addresss length @client_handshake()\n", exit(EXIT_FAILURE));
 	peerInfo->peer_addr = malloc(peerInfo->addr_len);
 	ret = recv(connfd, peerInfo->peer_addr, peerInfo->addr_len, MSG_WAITALL);
-	CHKERR_ACTION(ret==-1, "[ERROR]: unable to recive peer addresss @client_handshake()\n", exit(EXIT_FAILURE));
+	CHKERR_ACTION(ret == -1, "[ERROR]: unable to recive peer addresss @client_handshake()\n", exit(EXIT_FAILURE));
 
 	ret = send(connfd, &addr_len, sizeof(addr_len), 0);
-	CHKERR_ACTION(ret==-1, "[ERROR]: unable to send local addresss length @client_handshake()\n", exit(EXIT_FAILURE));
+	CHKERR_ACTION(ret == -1, "[ERROR]: unable to send local addresss length @client_handshake()\n", exit(EXIT_FAILURE));
 	ret = send(connfd, local_addr, addr_len, 0);
-	CHKERR_ACTION(ret==-1, "[ERROR]: unable to send local addresss @client_handshake()\n", exit(EXIT_FAILURE));
+	CHKERR_ACTION(ret == -1, "[ERROR]: unable to send local addresss @client_handshake()\n", exit(EXIT_FAILURE));
 
 #ifdef __DEBUG__
 	reciveTestMessage(connfd);
@@ -209,6 +228,14 @@ peerAddrInfo *client_handshake(const char *server, uint16_t server_port, ucp_wor
 	return peerInfo;
 }
 
+/**
+ * @brief Get the Endpoint object of ucx
+ * 
+ * @param worker the worker that will use the endpoint
+ * @param peer the peer address
+ * @param ep_field_mask Field mask for endpoint options
+ * @return a ucx endpoint
+ */
 ucp_ep_h getEndpoint(ucp_worker_h worker, peerAddrInfo *peer, uint64_t ep_field_mask)
 {
 	ucp_ep_h endpoint;
@@ -219,39 +246,115 @@ ucp_ep_h getEndpoint(ucp_worker_h worker, peerAddrInfo *peer, uint64_t ep_field_
 	ep_params.address = peer->peer_addr;
 
 	status = ucp_ep_create(worker, &ep_params, &endpoint);
-	CHKERR_ACTION(status!=UCS_OK, "[ERROR]: unable to create endpoint @ getEndpoint()\n", exit(EXIT_FAILURE));
+	CHKERR_ACTION(status != UCS_OK, "[ERROR]: unable to create endpoint @ getEndpoint()\n", exit(EXIT_FAILURE));
 
 	return endpoint;
 }
 
-
 /**
  * @brief This function implements a wait for ucp
- * 
- * @param ucp_worker 
- * @param request 
+ *
+ * @param ucp_worker The worker that needs to wait for something
+ * @param request The request on wich wait
  * @param ctx 
- * @return ucs_status_t 
+ * @return ucs_status_t
  */
 ucs_status_t ucpWait(ucp_worker_h ucp_worker, void *request, req_t *ctx)
 {
-    ucs_status_t status;
- 
-    /* if operation was completed immediately */
-    if (request == NULL) {
-        return UCS_OK;
-    }
- 
-    if (UCS_PTR_IS_ERR(request)) {
-        return UCS_PTR_STATUS(request);
-    }
- 
-    while (ctx->completed == 0) {
-        ucp_worker_progress(ucp_worker);
-    }
-    status = ucp_request_check_status(request);
- 
-    ucp_request_free(request);
- 
-    return status;
+	ucs_status_t status;
+
+	/* if operation was completed immediately */
+	if (request == NULL)
+		return UCS_OK;
+	
+
+	if (UCS_PTR_IS_ERR(request)) 
+		return UCS_PTR_STATUS(request);
+	
+
+	while (ctx->completed == 0)
+	{
+		ucp_worker_progress(ucp_worker);
+	}
+	status = ucp_request_check_status(request);
+
+	ucp_request_free(request);
+
+	return status;
+}
+
+
+/**
+ * @brief this function returns a parameters for a non blocking, tag based, send or recive, under the condition that a single buffer is sent. 
+ * 
+ * 
+ * @param parameterMask Bitmask for the operation parameters
+ * @param requestContext The context of the request. this is important as is the one containig the variable wich will tell when the request has been completed
+ * @param callbackFunctionHandle The fuinction to execute once the request has completed. This functrion should update the parameter contained in request context
+ * @return ucp_request_param_t* 
+ */
+ucp_request_param_t *getTagSendReciveParametersSingle(uint32_t parameterMask, req_t* requestContext, void* callbackFunctionHandle)
+{
+	ucp_request_param_t* param = malloc(sizeof(ucp_request_param_t));
+
+	param->op_attr_mask = parameterMask;
+	param->datatype = ucp_dt_make_contig(1);
+	param->user_data = requestContext;
+	param->cb.send = callbackFunctionHandle;
+
+	return param;
+}
+
+
+/**
+ * @brief This function implements a basic recive handler function 
+ * 
+ * @param request The request that has been completed
+ * @param status Status of the request
+ * @param info 
+ * @param user_data the pointer to the structure that contains the variable that tells when a recive has been completed
+ */
+
+void default_recv_handler(void *request, ucs_status_t status, ucp_tag_recv_info_t *info, void *user_data)
+{
+	if (status != UCS_OK)
+	{
+		printf("[Error] unable to recive message!");
+		return;
+	}
+	struct ucx_context *context = (struct ucx_context *)user_data;
+	context->completed = 1;
+	printf("[INFO] Recive complete @ recv_handler().\n");
+}
+
+
+/**
+ * @brief This function implements a basic recive handler function 
+ * 
+ * @param request The request that the send will handle
+ * @param status the status of the request
+ * @param ctx the pointer to the structure that contains the variable that tells when a recive has been completed
+ */
+void default_send_handler(void *request, ucs_status_t status, void *ctx)
+{
+
+	if (status != UCS_OK)
+	{
+		printf("[Error] unable to send message!");
+		return;
+	}
+	struct ucx_context *context = (struct ucx_context *)ctx;
+	context->completed = 1;
+	printf("[INFO] Send complete @ send_handler().\n");
+}
+
+/**
+ * @brief This function implements a defalt function to initialize the ucx vcariable that thells when a request has been served
+ * 
+ * @param request the pointer to the structure that contains the variable
+ */
+void default_request_init(void *request)
+{
+	struct ucx_context *ctx = (struct ucx_context *)request;
+	ctx->completed = 0;
 }

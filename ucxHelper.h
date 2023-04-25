@@ -75,4 +75,12 @@ ucp_ep_h getEndpoint(ucp_worker_h worker, peerAddrInfo *peer, uint64_t ep_field_
 
 ucs_status_t ucpWait(ucp_worker_h ucp_worker, void *request, req_t *ctx);
 
+ucp_request_param_t *getTagSendReciveParametersSingle(uint32_t parameterMask, req_t* requestContext, void* callbackFunctionHandle);
+
+void default_recv_handler(void *request, ucs_status_t status, ucp_tag_recv_info_t *info, void *user_data);
+
+void default_send_handler(void *request, ucs_status_t status, void *ctx);
+
+void default_request_init(void *request);
+
 #endif

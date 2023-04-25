@@ -16,6 +16,7 @@
 #include <pthread.h> /* pthread_self */
 #include <errno.h>   /* errno */
 #include <time.h>
+#include <fcntl.h>
 
 /**
  * Functions to make more easy to develop ucx applications

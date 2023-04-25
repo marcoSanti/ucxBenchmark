@@ -11,7 +11,9 @@ benchmark: ucxHelper.o benchmark.o
 debug:
 	$(CC) $(CFLAGSD) test.c -c $(ucxInclude) -o test.o
 	$(CC) $(CFLAGSD) ucxHelper.c -c $(ucxInclude) -o ucxHelper.o
-	$(CC) $(CFLAGSD) test.o ucxHelper.o $(ucxInclude) -o test
+	$(CC) $(CFLAGSD) benchmark.c -c $(ucxInclude) -o benchmark.o
+	$(CC) $(CFLAGSD) test.o ucxHelper.o $(ucxInclude) -o testDebug
+	$(CC) $(CFLAGSD) benchmark.o ucxHelper.o $(ucxInclude) -o benchmarkDebug
 
 
 benchmark.o: benchmark.c
@@ -29,4 +31,4 @@ ucxHelper.o: ucxHelper.c
 
 
 clean:
-	rm -f *.o test ucxHelper benchmark *~ 
+	rm -f *.o *.dat test testDebug benchmarkDebug ucxHelper benchmark *~ 

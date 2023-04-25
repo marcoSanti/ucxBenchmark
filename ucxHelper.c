@@ -271,12 +271,16 @@ ucs_status_t ucpWait(ucp_worker_h ucp_worker, void *request, req_t *ctx)
 	if (UCS_PTR_IS_ERR(request)) 
 		return UCS_PTR_STATUS(request);
 	
-
-	while (ctx->completed == 0)
+	while( ((req_t*)request)->completed == 0 )
+	//while (ctx->completed == 0)
 	{
 		ucp_worker_progress(ucp_worker);
 	}
 	status = ucp_request_check_status(request);
+
+	//at this point, i have unloked the busy eait and i can reset the context
+	//to not completed
+	ctx->completed = 0;
 
 	ucp_request_free(request);
 
@@ -324,7 +328,12 @@ void default_recv_handler(void *request, ucs_status_t status, ucp_tag_recv_info_
 	}
 	struct ucx_context *context = (struct ucx_context *)user_data;
 	context->completed = 1;
+
+	((req_t*)request)->completed = 1;
+
+#ifdef __DEBUG__
 	printf("[INFO] Recive complete @ recv_handler().\n");
+#endif
 }
 
 
@@ -345,7 +354,9 @@ void default_send_handler(void *request, ucs_status_t status, void *ctx)
 	}
 	struct ucx_context *context = (struct ucx_context *)ctx;
 	context->completed = 1;
+#ifdef __DEBUG__
 	printf("[INFO] Send complete @ send_handler().\n");
+#endif
 }
 
 /**

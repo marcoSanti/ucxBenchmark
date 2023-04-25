@@ -1,5 +1,6 @@
 .vscode/*
 *.o
+*.dat
 test
 benchmark
 ucxHelper

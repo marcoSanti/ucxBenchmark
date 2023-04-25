@@ -246,7 +246,7 @@ ucs_status_t ucpWait(ucp_worker_h ucp_worker, void *request, req_t *ctx)
         return UCS_PTR_STATUS(request);
     }
  
-    while (ctx->complete == 0) {
+    while (ctx->completed == 0) {
         ucp_worker_progress(ucp_worker);
     }
     status = ucp_request_check_status(request);

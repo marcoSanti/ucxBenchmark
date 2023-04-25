@@ -223,3 +223,35 @@ ucp_ep_h getEndpoint(ucp_worker_h worker, peerAddrInfo *peer, uint64_t ep_field_
 
 	return endpoint;
 }
+
+
+/**
+ * @brief This function implements a wait for ucp
+ * 
+ * @param ucp_worker 
+ * @param request 
+ * @param ctx 
+ * @return ucs_status_t 
+ */
+ucs_status_t ucpWait(ucp_worker_h ucp_worker, void *request, req_t *ctx)
+{
+    ucs_status_t status;
+ 
+    /* if operation was completed immediately */
+    if (request == NULL) {
+        return UCS_OK;
+    }
+ 
+    if (UCS_PTR_IS_ERR(request)) {
+        return UCS_PTR_STATUS(request);
+    }
+ 
+    while (ctx->complete == 0) {
+        ucp_worker_progress(ucp_worker);
+    }
+    status = ucp_request_check_status(request);
+ 
+    ucp_request_free(request);
+ 
+    return status;
+}

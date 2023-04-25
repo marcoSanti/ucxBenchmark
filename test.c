@@ -23,7 +23,15 @@ static void recv_handler(void *request, ucs_status_t status, ucp_tag_recv_info_t
 }
 
 
+
+
+
+
 int main(int argc, char *argv[]){
+
+	req_t requestContext;
+
+	requestContext.complete = 0;
 
 	peerAddrInfo *peerInfo;
 	ucp_ep_h endpoint;
@@ -47,7 +55,13 @@ int main(int argc, char *argv[]){
 		endpoint = getEndpoint(worker, peerInfo, UCP_EP_PARAM_FIELD_REMOTE_ADDRESS);
 		ucp_ep_print_info(endpoint, stdout);
 
-		ucp_tag_send_nbr(endpoint,"This is a blocking send test\0",strlen("This is a blocking send test\0"),UCP_DATATYPE_CONTIG,1,send_handler);		
+		ucp_request_param_t requestParam;
+
+		requestParam.flags = ucp_dt_make_contig(1);
+		requestParam.op_attr_mask = UCP_OP_ATTR_FIELD_CALLBACK | UCP_OP_ATTR_FIELD_DATATYPE | UCP_OP_ATTR_FIELD_USER_DATA;
+
+
+		ucp_tag_send_nbx(endpoint,"This is a blocking send test\0",strlen("This is a blocking send test\0"),1, &requestParam);		
 	}
 	else
 	{ //client
@@ -55,7 +69,10 @@ int main(int argc, char *argv[]){
 		endpoint = getEndpoint(worker, peerInfo, UCP_EP_PARAM_FIELD_REMOTE_ADDRESS);
 		ucp_ep_print_info(endpoint, stdout);
 		char buffer[strlen("This is a blocking send test\0")+1];
-		ucp_tag_recv_nbr(worker, &buffer, strlen("This is a blocking send test\0"), UCP_DATATYPE_CONTIG, 1,1,recv_handler);
+
+		
+
+		ucp_tag_recv_nbr(worker, &buffer, strlen("This is a blocking send test\0"), UCP_DATATYPE_CONTIG, 1,1, NULL);
 		printf("%s\n", buffer);
 
 	}

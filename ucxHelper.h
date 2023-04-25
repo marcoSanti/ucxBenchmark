@@ -38,7 +38,7 @@ typedef struct _peerAddrInfo
  * 
  */
 typedef struct _req {
-    int complete;
+    int completed;
 } req_t;
 
 /**

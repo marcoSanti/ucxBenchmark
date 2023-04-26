@@ -6,7 +6,6 @@
 #define __TEMP_FILE_NAME__ "temp.dat"
 
 
-
 extern int errno;
 
 
@@ -49,12 +48,13 @@ int main(int argc, char *argv[]){
 	ucp_tag_t SETUP_TAG 		= 0;
 	ucp_tag_t DATA_SEND_TAG 	= 1;
 	ucp_tag_t DATA_CONCLUDE_TAG = 2;
-	ucp_tag_t TAG_MASK_BITS 	= 0;
+	ucp_tag_t TAG_MASK_BITS 	= 0xFFFFFFFFFFFFFFFF;
 
     peerAddrInfo *peerInfo;
 	ucp_ep_h endpoint;
-	req_t *request;
+	req_t *request = malloc(sizeof(req_t));
 	req_t requestContext;
+	requestContext.completed=0;
 		
 
 	ucp_context_h context = bootstrapUcx(
@@ -80,11 +80,6 @@ int main(int argc, char *argv[]){
 		printf("[INFO] Server: created client endpoint\n");
         printf("[INFO] Server is ready to comunicate\n");
 
-		ucp_request_param_t* sendParam = getTagSendReciveParametersSingle(
-			UCP_OP_ATTR_FIELD_CALLBACK | UCP_OP_ATTR_FIELD_DATATYPE | UCP_OP_ATTR_FIELD_USER_DATA,
-			&requestContext,
-			default_send_handler );
-
 		ucp_request_param_t* recvParam = getTagSendReciveParametersSingle(
 			UCP_OP_ATTR_FIELD_CALLBACK | UCP_OP_ATTR_FIELD_DATATYPE | UCP_OP_ATTR_FIELD_USER_DATA,
 			&requestContext,
@@ -106,21 +101,21 @@ int main(int argc, char *argv[]){
 		ucp_tag_message_h msg_tag;
 		ucp_tag_recv_info_t info_tag;
 
-		for(;;){
-
+		for(int i = 0;; i++){
+/*
 			//probe for last message incoming
 			msg_tag = ucp_tag_probe_nb(worker, DATA_CONCLUDE_TAG, TAG_MASK_BITS, 1, &info_tag);
 			if (msg_tag != NULL) {
-            /* last message incoming, so recive and conclude */
-			request = ucp_tag_recv_nbx(worker, &winSize, sizeof(winSize), DATA_CONCLUDE_TAG, TAG_MASK_BITS, recvParam);
-			ucpWait(worker,request, &requestContext);
+				// last message incoming, so recive and conclude 
+				request = ucp_tag_recv_nbx(worker, &winSize, sizeof(winSize), DATA_CONCLUDE_TAG, TAG_MASK_BITS, recvParam);
+				ucpWait(worker,request);
             	break;
         	}
-
+*/
 			request = ucp_tag_recv_nbx(worker, &winSize, sizeof(winSize), DATA_SEND_TAG, TAG_MASK_BITS, recvParam);
 			if(request != NULL)
 				ucpWait(worker,request, &requestContext);		
-			
+			printf("[DATA] recived data chunk from client\n");
 			request = NULL;
 		}
 
@@ -139,11 +134,6 @@ int main(int argc, char *argv[]){
 			UCP_OP_ATTR_FIELD_CALLBACK | UCP_OP_ATTR_FIELD_DATATYPE | UCP_OP_ATTR_FIELD_USER_DATA,
 			&requestContext,
 			default_send_handler );
-
-		ucp_request_param_t* recvParam = getTagSendReciveParametersSingle(
-			UCP_OP_ATTR_FIELD_CALLBACK | UCP_OP_ATTR_FIELD_DATATYPE | UCP_OP_ATTR_FIELD_USER_DATA,
-			&requestContext,
-			default_recv_handler );
 
 		int iterations = atoi(argv[3]);
 		int winsize = atoi(argv[4]);
@@ -178,7 +168,7 @@ int main(int argc, char *argv[]){
 			fread(buffer, winsize, 1, dataSample);
 			
 			request = ucp_tag_send_nbx(endpoint, buffer, winsize, DATA_SEND_TAG, sendParam);
-			ucpWait(worker,request, &requestContext);
+			ucpWait(worker, request, &requestContext);
 
 			if(i % (iterations/10) == 0)
 				printf("."); //print a dot evry 10%of the benchmark
@@ -203,4 +193,6 @@ int main(int argc, char *argv[]){
 		printf("\n\nUsage ./benchmark [-s | -c <server_ip> <sendIterations> <window_size>]\n");
 	}
 
+	free(request);
+	return 0;
 }

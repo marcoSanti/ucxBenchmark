@@ -18,15 +18,13 @@
 #include <time.h>
 #include <fcntl.h>
 
+
+#define __DEBUG__
+
+
 /**
  * Functions to make more easy to develop ucx applications
  */
-
-// TODO: vedere dove voene usato
-struct ucx_context
-{
-    int completed;
-};
 
 typedef struct _peerAddrInfo
 {
@@ -74,11 +72,11 @@ peerAddrInfo *client_handshake(const char *server, uint16_t server_port, ucp_wor
 
 ucp_ep_h getEndpoint(ucp_worker_h worker, peerAddrInfo *peer, uint64_t ep_field_mask);
 
-ucs_status_t ucpWait(ucp_worker_h ucp_worker, void *request, req_t *ctx);
+ucs_status_t ucpWait(ucp_worker_h ucp_worker, void *request, req_t* ctx);
 
 ucp_request_param_t *getTagSendReciveParametersSingle(uint32_t parameterMask, req_t* requestContext, void* callbackFunctionHandle);
 
-void default_recv_handler(void *request, ucs_status_t status, ucp_tag_recv_info_t *info, void *user_data);
+void default_recv_handler(void *request, ucs_status_t status, const ucp_tag_recv_info_t *info, void *user_data);
 
 void default_send_handler(void *request, ucs_status_t status, void *ctx);
 

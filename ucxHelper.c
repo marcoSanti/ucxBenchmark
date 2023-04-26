@@ -60,7 +60,7 @@ ucp_context_h bootstrapUcx(ucp_request_init_callback_t request_init, enum ucp_pa
 
 	ucp_params.field_mask = ucpParamsFields;
 	ucp_params.features = ucpFeature;
-	ucp_params.request_size = sizeof(struct ucx_context); // The size of a reserved space in a non-blocking requests. Typically applications use this space for caching own structures in order to avoid costly memory allocations, pointer dereferences, and cache misses.
+	ucp_params.request_size = sizeof(req_t); // The size of a reserved space in a non-blocking requests. Typically applications use this space for caching own structures in order to avoid costly memory allocations, pointer dereferences, and cache misses.
 	ucp_params.request_init = request_init;
 
 	status = ucp_config_read(NULL, NULL, &ucp_config);
@@ -258,8 +258,9 @@ ucp_ep_h getEndpoint(ucp_worker_h worker, peerAddrInfo *peer, uint64_t ep_field_
  * @param request The request on wich wait
  * @param ctx 
  * @return ucs_status_t
+ * +
  */
-ucs_status_t ucpWait(ucp_worker_h ucp_worker, void *request, req_t *ctx)
+ucs_status_t ucpWait(ucp_worker_h ucp_worker, void *request, req_t* ctx)
 {
 	ucs_status_t status;
 
@@ -271,18 +272,16 @@ ucs_status_t ucpWait(ucp_worker_h ucp_worker, void *request, req_t *ctx)
 	if (UCS_PTR_IS_ERR(request)) 
 		return UCS_PTR_STATUS(request);
 	
-	while( ((req_t*)request)->completed == 0 )
-	//while (ctx->completed == 0)
+	
+	while( ctx->completed == 0 )
 	{
 		ucp_worker_progress(ucp_worker);
 	}
 	status = ucp_request_check_status(request);
 
-	//at this point, i have unloked the busy eait and i can reset the context
-	//to not completed
-	ctx->completed = 0;
-
 	ucp_request_free(request);
+
+	ctx->completed=0;
 
 	return status;
 }
@@ -319,43 +318,42 @@ ucp_request_param_t *getTagSendReciveParametersSingle(uint32_t parameterMask, re
  * @param user_data the pointer to the structure that contains the variable that tells when a recive has been completed
  */
 
-void default_recv_handler(void *request, ucs_status_t status, ucp_tag_recv_info_t *info, void *user_data)
+void default_recv_handler(void *request, ucs_status_t status, const ucp_tag_recv_info_t *info, void *user_data)
 {
 	if (status != UCS_OK)
 	{
-		printf("[Error] unable to recive message!");
+		printf("[Error] unable to recive message!. UCS error is: %s\n", ucs_status_string(status));
 		return;
 	}
-	struct ucx_context *context = (struct ucx_context *)user_data;
-	context->completed = 1;
 
-	((req_t*)request)->completed = 1;
+	((req_t*)user_data)->completed = 1;
 
 #ifdef __DEBUG__
-	printf("[INFO] Recive complete @ recv_handler().\n");
+	printf("[REQ_RECV_HANDLER] request recived completed: %d, UserData: %d\n", ((req_t*)request)->completed, ((req_t*)user_data)->completed);
 #endif
 }
 
 
+
 /**
- * @brief This function implements a basic recive handler function 
- * 
+ * @brief This functidefault_recv_handleron implements a basic recive handler function 
  * @param request The request that the send will handle
  * @param status the status of the request
- * @param ctx the pointer to the structure that contains the variable that tells when a recive has been completed
+ * @param user_data the pointer to the structure that contains the variable that tells when a recive has been completed
  */
-void default_send_handler(void *request, ucs_status_t status, void *ctx)
+void default_send_handler(void *request, ucs_status_t status, void *user_data)
 {
-
+	
 	if (status != UCS_OK)
 	{
-		printf("[Error] unable to send message!");
+		printf("[Error] unable to send message! Error code is: %s\n", ucs_status_string(status));
 		return;
 	}
-	struct ucx_context *context = (struct ucx_context *)ctx;
-	context->completed = 1;
+
+	((req_t*)user_data)->completed = 1;
+
 #ifdef __DEBUG__
-	printf("[INFO] Send complete @ send_handler().\n");
+	printf("[REQ_SEND_HANDLER] send completed: %d\n", ((req_t*)user_data)->completed);
 #endif
 }
 
@@ -366,6 +364,5 @@ void default_send_handler(void *request, ucs_status_t status, void *ctx)
  */
 void default_request_init(void *request)
 {
-	struct ucx_context *ctx = (struct ucx_context *)request;
-	ctx->completed = 0;
+	((req_t*)request)->completed = 0;
 }

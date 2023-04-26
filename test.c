@@ -10,7 +10,6 @@ int main(int argc, char *argv[])
 {
 
 	req_t requestContext;
-
 	requestContext.completed = 0;
 
 	peerAddrInfo *peerInfo;

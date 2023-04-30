@@ -116,7 +116,7 @@ int main(int argc, char *argv[])
 		double elapsedTime = (end.tv_sec + 0.000001 * end.tv_usec) - (start.tv_sec + 0.000001 * start.tv_usec);
 		double bandwidth = transferSize / elapsedTime;
 
-		printf("Completed!\n[RESULT] Time elapsed to recive %ld bytes: \n\t%lf seconds.\n\tBandwidth= %.2lf MBytes / seconds\n", transferSize, elapsedTime, bandwidth / (1024 * 1024));
+		printf("Completed!\n[RESULT] Time elapsed to recive %ld bytes: \n\t%lf seconds.\n\tBandwidth= %.2lf MBytes/s (%.2lf Mbit/s)\n", transferSize, elapsedTime, bandwidth / (1024 * 1024), transferSize/10e6);
 
 		
 	}
@@ -177,7 +177,7 @@ int main(int argc, char *argv[])
 		double elapsedTime = (end.tv_sec + 0.000001 * end.tv_usec) - (start.tv_sec + 0.000001 * start.tv_usec);
 		double bandwidth = transferSize / elapsedTime;
 
-		printf("Completed!\n[RESULT] Time elapsed to transfer %ld bytes: \n\t%lf seconds.\n\tBandwidth= %.2lf MBytes / seconds\n", transferSize, elapsedTime, bandwidth / (1024 * 1024));
+		printf("Completed!\n[RESULT] Time elapsed to send %ld bytes: \n\t%lf seconds.\n\tBandwidth= %.2lf MBytes/s (%.2lf Mbit/s)\n", transferSize, elapsedTime, bandwidth / (1024 * 1024), transferSize/10e6);
 	}
 	else
 	{

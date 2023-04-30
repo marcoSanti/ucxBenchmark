@@ -70,7 +70,7 @@ ucp_context_h bootstrapUcx(ucp_request_init_callback_t request_init, enum ucp_pa
 	status = ucp_init(&ucp_params, ucp_config, &ucp_context);
 	CHKERR_ACTION(status != UCS_OK, "[ERROR]: Unable to read init UCX @ bootstrapUcx()\n", exit(EXIT_FAILURE));
 
-#ifdef __DEBUG__
+#ifdef __DEBUG_CFG_PRINT__
 	ucp_config_print(ucp_config, stdout, NULL, UCS_CONFIG_PRINT_CONFIG);
 #endif
 	ucp_config_release(ucp_config);
@@ -252,38 +252,64 @@ ucp_ep_h getEndpoint(ucp_worker_h worker, peerAddrInfo *peer, uint64_t ep_field_
 }
 
 /**
- * @brief This function implements a wait for ucp
+ * @brief This function implements a wait for ucp. it will spinlock untill the request is completed
  *
  * @param ucp_worker The worker that needs to wait for something
- * @param request The request on wich wait
+ * @param request_status The request on wich wait returned by ucp send or recive
  * @param ctx 
  * @return ucs_status_t
  * +
  */
-ucs_status_t ucpWait(ucp_worker_h ucp_worker, void *request, req_t* ctx)
+ucs_status_t ucpWait(ucp_worker_h ucp_worker, ucs_status_ptr_t request_status, req_t* ctx)
 {
 	ucs_status_t status;
 
 	/* if operation was completed immediately */
-	if (request == NULL)
+	if (request_status == NULL)
 		return UCS_OK;
 	
 
-	if (UCS_PTR_IS_ERR(request)) 
-		return UCS_PTR_STATUS(request);
+	if (UCS_PTR_IS_ERR(request_status)) 
+		return UCS_PTR_STATUS(request_status);
 	
 	
 	while( ctx->completed == 0 )
 	{
 		ucp_worker_progress(ucp_worker);
 	}
-	status = ucp_request_check_status(request);
+	status = ucp_request_check_status(request_status);
 
-	ucp_request_free(request);
+
+	ucp_request_free(request_status);
 
 	ctx->completed=0;
 
 	return status;
+}
+
+/**
+ * @brief This function implements a busy wait for non blocking recive ucx calls. It will loop and return as sson as a message is present. This function will not remove the incoming message from the queue!
+ * 
+ * @param worker Worker on wich to eait for an incoming message3
+ * @param messageTag Message tag to wait for
+ * @param messageTagMask  MEssage tag bitmask
+ * @param incoming_msg pointer to a ucp_tag_recv_info_t data structure that will be filed with the incoming message info. if not interested in incoming message info, it can be set to NULL
+ */
+void waitForMessageWithTag(ucp_worker_h worker, ucp_tag_t messageTag, ucp_tag_t messageTagMask, ucp_tag_recv_info_t* incoming_msg){
+	
+	ucp_tag_recv_info_t* info_tag = malloc(sizeof(info_tag));
+
+	while( ucp_tag_probe_nb(worker, messageTag, messageTagMask, 0, info_tag) == NULL) {
+		ucp_worker_progress(worker);
+	}
+
+	if(incoming_msg == NULL){
+		free(info_tag);
+	}else{
+		incoming_msg = info_tag;
+	}
+
+
 }
 
 
@@ -329,7 +355,7 @@ void default_recv_handler(void *request, ucs_status_t status, const ucp_tag_recv
 	((req_t*)user_data)->completed = 1;
 
 #ifdef __DEBUG__
-	printf("[REQ_RECV_HANDLER] request recived completed: %d, UserData: %d\n", ((req_t*)request)->completed, ((req_t*)user_data)->completed);
+	printf("[REQ_RECV_HANDLER] request recived completed.\n");
 #endif
 }
 

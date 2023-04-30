@@ -70,7 +70,7 @@ ucp_context_h bootstrapUcx(ucp_request_init_callback_t request_init, enum ucp_pa
 	status = ucp_init(&ucp_params, ucp_config, &ucp_context);
 	CHKERR_ACTION(status != UCS_OK, "[ERROR]: Unable to read init UCX @ bootstrapUcx()\n", exit(EXIT_FAILURE));
 
-#ifdef __DEBUG_CFG_PRINT__
+#ifdef __DEBUG__
 	ucp_config_print(ucp_config, stdout, NULL, UCS_CONFIG_PRINT_CONFIG);
 #endif
 	ucp_config_release(ucp_config);

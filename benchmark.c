@@ -75,8 +75,7 @@ int main(int argc, char *argv[])
 
 	if (strcmp(argv[1], "-s") == 0) // server
 	{
-		ucp_tag_message_h msg_tag;
-		ucp_tag_recv_info_t info_tag;
+	
 		peerInfo = server_handshake(__SERVER_PORT__, worker);
 		printf("[INFO] Server: obtained client informations\n");
 		endpoint = getEndpoint(worker, peerInfo, UCP_EP_PARAM_FIELD_REMOTE_ADDRESS);

@@ -48,11 +48,14 @@ int main(int argc, char *argv[]){
 	ucp_tag_t SETUP_TAG 		= 0;
 	ucp_tag_t DATA_SEND_TAG 	= 1;
 	ucp_tag_t DATA_CONCLUDE_TAG = 2;
-	ucp_tag_t TAG_MASK_BITS 	= 0xFFFFFFFFFFFFFFFF;
+	ucp_tag_t TAG_MASK_BITS 	= 0;
+	//ucp_tag_t TAG_MASK_BITS 	= 0xFFFFFFFFFFFFFFFF;
 
     peerAddrInfo *peerInfo;
 	ucp_ep_h endpoint;
-	req_t *request = malloc(sizeof(req_t));
+
+	ucs_status_ptr_t request_status;
+
 	req_t requestContext;
 	requestContext.completed=0;
 		
@@ -88,12 +91,12 @@ int main(int argc, char *argv[]){
 		int iterations=0, winSize=0;
 
 		//recive of bufferSize
-		request = ucp_tag_recv_nbx(worker, &iterations, sizeof(iterations), SETUP_TAG, TAG_MASK_BITS, recvParam);
-		ucpWait(worker,request, &requestContext);
+		request_status = ucp_tag_recv_nbx(worker, &iterations, sizeof(iterations), SETUP_TAG, TAG_MASK_BITS, recvParam);
+		ucpWait(worker, &request_status, &requestContext);
 
 		//recive of winsize
-		request = ucp_tag_recv_nbx(worker, &winSize, sizeof(winSize), SETUP_TAG, TAG_MASK_BITS, recvParam);
-		ucpWait(worker,request, &requestContext);
+		request_status = ucp_tag_recv_nbx(worker, &winSize, sizeof(winSize), SETUP_TAG, TAG_MASK_BITS, recvParam);
+		ucpWait(worker, &request_status, &requestContext);
 
 		long int transferSize = iterations * winSize;
 		printf("[INFO] Recived config from client: \n\tsendIterations: %d,\n\twinSize: %d,\n\ttotal transfer size:%ld\n", iterations , winSize, transferSize);
@@ -102,21 +105,21 @@ int main(int argc, char *argv[]){
 		ucp_tag_recv_info_t info_tag;
 
 		for(int i = 0;; i++){
-/*
+
 			//probe for last message incoming
 			msg_tag = ucp_tag_probe_nb(worker, DATA_CONCLUDE_TAG, TAG_MASK_BITS, 1, &info_tag);
 			if (msg_tag != NULL) {
 				// last message incoming, so recive and conclude 
-				request = ucp_tag_recv_nbx(worker, &winSize, sizeof(winSize), DATA_CONCLUDE_TAG, TAG_MASK_BITS, recvParam);
-				ucpWait(worker,request);
+				request_status = ucp_tag_recv_nbx(worker, &winSize, sizeof(winSize), DATA_CONCLUDE_TAG, TAG_MASK_BITS, recvParam);
+				ucpWait(worker, &request_status, &requestContext);
             	break;
         	}
-*/
-			request = ucp_tag_recv_nbx(worker, &winSize, sizeof(winSize), DATA_SEND_TAG, TAG_MASK_BITS, recvParam);
-			if(request != NULL)
-				ucpWait(worker,request, &requestContext);		
+
+			request_status = ucp_tag_recv_nbx(worker, &winSize, sizeof(winSize), DATA_SEND_TAG, TAG_MASK_BITS, recvParam);
+			if(request_status != NULL)
+				ucpWait(worker, &request_status, &requestContext);		
 			printf("[DATA] recived data chunk from client\n");
-			request = NULL;
+			
 		}
 
 
@@ -146,13 +149,13 @@ int main(int argc, char *argv[]){
 		
 
 		//first i send to the server the bufferSize
-		request = ucp_tag_send_nbx(endpoint, &iterations, sizeof(iterations), SETUP_TAG, sendParam);
-		ucpWait(worker,request, &requestContext);
+		request_status = ucp_tag_send_nbx(endpoint, &iterations, sizeof(iterations), SETUP_TAG, sendParam);
+		ucpWait(worker, &request_status, &requestContext);
 		
 
 		//now i sent the windowsSize
-		request = ucp_tag_send_nbx(endpoint, &winsize, sizeof(winsize), SETUP_TAG, sendParam);
-		ucpWait(worker,request, &requestContext);
+		request_status = ucp_tag_send_nbx(endpoint, &winsize, sizeof(winsize), SETUP_TAG, sendParam);
+		ucpWait(worker, &request_status, &requestContext);
 
 		printf("[INFO] Setup complete... starting benchmark...\n");
 		//now i begin the benchmark
@@ -167,8 +170,8 @@ int main(int argc, char *argv[]){
 			fseek(dataSample, filePosition, SEEK_SET);
 			fread(buffer, winsize, 1, dataSample);
 			
-			request = ucp_tag_send_nbx(endpoint, buffer, winsize, DATA_SEND_TAG, sendParam);
-			ucpWait(worker, request, &requestContext);
+			request_status = ucp_tag_send_nbx(endpoint, buffer, winsize, DATA_SEND_TAG, sendParam);
+			ucpWait(worker, &request_status, &requestContext);
 
 			if(i % (iterations/10) == 0)
 				printf("."); //print a dot evry 10%of the benchmark
@@ -179,8 +182,8 @@ int main(int argc, char *argv[]){
 		fseek(dataSample, filePosition, SEEK_SET);
 		fread(buffer, winsize, 1, dataSample);
 		
-		request = ucp_tag_send_nbx(endpoint, buffer, winsize, DATA_CONCLUDE_TAG, sendParam);
-		ucpWait(worker,request, &requestContext);
+		request_status = ucp_tag_send_nbx(endpoint, buffer, winsize, DATA_CONCLUDE_TAG, sendParam);
+		ucpWait(worker, &request_status, &requestContext);
 
 		gettimeofday(&end, NULL);
 
@@ -193,6 +196,6 @@ int main(int argc, char *argv[]){
 		printf("\n\nUsage ./benchmark [-s | -c <server_ip> <sendIterations> <window_size>]\n");
 	}
 
-	free(request);
+	free(request_status);
 	return 0;
 }

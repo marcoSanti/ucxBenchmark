@@ -9,7 +9,7 @@ benchmark: ucxHelper.o benchmark.o
 	$(CC) benchmark.o ucxHelper.o $(ucxInclude) -o benchmark
 
 hostdevice: ucxHelper.o hostdevice.o
-	$(CC) benchmark1.o ucxHelper.o $(ucxInclude) -o hostdevice
+	$(CC) hostdevice.o ucxHelper.o $(ucxInclude) -o hostdevice
 
 debug:
 	$(CC) $(CFLAGSD) test.c -c $(ucxInclude) -o test.o

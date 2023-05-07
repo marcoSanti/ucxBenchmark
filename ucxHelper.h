@@ -83,4 +83,9 @@ void default_send_handler(void *request, ucs_status_t status, void *ctx);
 
 void default_request_init(void *request);
 
+
+//test for infiniband problem fix
+void client_handshake_single(const char *peer_addr, uint16_t server_port, ucp_worker_h worker);
+peerAddrInfo *server_handshake_single(uint16_t server_port);
+
 #endif

@@ -8,20 +8,20 @@ ucxInclude=-L$(UCX_PATH)/lib -I$(UCX_PATH)/include -lucp -lucs -luct
 benchmark: ucxHelper.o benchmark.o
 	$(CC) benchmark.o ucxHelper.o $(ucxInclude) -o benchmark
 
-benchmark1: ucxHelper.o benchmark1.o
-	$(CC) benchmark1.o ucxHelper.o $(ucxInclude) -o benchmark1
+hostdevice: ucxHelper.o hostdevice.o
+	$(CC) benchmark1.o ucxHelper.o $(ucxInclude) -o hostdevice
 
 debug:
 	$(CC) $(CFLAGSD) test.c -c $(ucxInclude) -o test.o
 	$(CC) $(CFLAGSD) ucxHelper.c -c $(ucxInclude) -o ucxHelper.o
 	$(CC) $(CFLAGSD) benchmark.c -c $(ucxInclude) -o benchmark.o
-	$(CC) $(CFLAGSD) benchmark1.c -c $(ucxInclude) -o benchmark1.o
+	$(CC) $(CFLAGSD) hostdevice.c -c $(ucxInclude) -o hostdevice.o
 	$(CC) $(CFLAGSD) test.o ucxHelper.o $(ucxInclude) -o testDebug
 	$(CC) $(CFLAGSD) benchmark.o ucxHelper.o $(ucxInclude) -o benchmarkDebug
-	$(CC) $(CFLAGSD) benchmark1.o ucxHelper.o $(ucxInclude) -o benchmarkDebug1
+	$(CC) $(CFLAGSD) hostdevice.o ucxHelper.o $(ucxInclude) -o hostdeviceDebug
 
-benchmark1.o: benchmark1.c
-	$(CC) benchmark1.c -c $(ucxInclude) -o benchmark1.o
+hostdevice.o: hostdevice.c
+	$(CC) hostdevice.c -c $(ucxInclude) -o hostdevice.o
 
 benchmark.o: benchmark.c
 	$(CC) benchmark.c -c $(ucxInclude) -o benchmark.o
@@ -38,4 +38,4 @@ ucxHelper.o: ucxHelper.c
 
 
 clean:
-	rm -f *.o *.dat test testDebug benchmarkDebug ucxHelper benchmark benchmark1 benchmarkDebug1*~ 
+	rm -f *.o *.dat test testDebug benchmarkDebug ucxHelper benchmark hostdevice hostdeviceDebug benchmarkDebug1*~ 

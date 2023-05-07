@@ -105,9 +105,8 @@ ucp_worker_h getUcxWorker(ucp_context_h context, uint64_t field_mask, ucs_thread
 
 
 
-peerAddrInfo *server_handshake_single(uint16_t server_port)
+peerAddrInfo *host_handshake(uint16_t server_port)
 {
-	uint64_t addr_len = 0;
 	struct sockaddr_in inaddr;
 	int lsock = -1;
 	int dsock = -1;
@@ -120,7 +119,7 @@ peerAddrInfo *server_handshake_single(uint16_t server_port)
 
 	optval = 1;
 	ret = setsockopt(lsock, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
-	CHKERR_ACTION(ret != 0, "[ERROR]: unable to setsockopt @server_handshake()\n", exit(EXIT_FAILURE));
+	CHKERR_ACTION(ret != 0, "[ERROR]: unable to setsockopt @host_handshake()\n", exit(EXIT_FAILURE));
 
 	inaddr.sin_family = AF_INET;
 	inaddr.sin_port = htons(server_port);
@@ -129,24 +128,24 @@ peerAddrInfo *server_handshake_single(uint16_t server_port)
 	memset(inaddr.sin_zero, 0, sizeof(inaddr.sin_zero));
 
 	ret = bind(lsock, (struct sockaddr *)&inaddr, sizeof(inaddr));
-	CHKERR_ACTION(ret != 0, "[ERROR]: unable to bind socket @server_handshake()\n", exit(EXIT_FAILURE));
+	CHKERR_ACTION(ret != 0, "[ERROR]: unable to bind socket @host_handshake()\n", exit(EXIT_FAILURE));
 
 	ret = listen(lsock, 0);
-	CHKERR_ACTION(ret != 0, "[ERROR]: unable to listen on socket @server_handshake()\n", exit(EXIT_FAILURE));
+	CHKERR_ACTION(ret != 0, "[ERROR]: unable to listen on socket @host_handshake()\n", exit(EXIT_FAILURE));
 
-	fprintf(stdout, "[INFO] Server is waiting for connection...\n");
+	fprintf(stdout, "[INFO] HOIST waiting for connection...\n");
 	/* Accept next connection */
 	dsock = accept(lsock, NULL, NULL);
-	fprintf(stdout, "[INFO] Server has accepted a connection\n");
+	fprintf(stdout, "[INFO] HOST has accepted a connection\n");
 
 	close(lsock);
 
 	ret = recv(dsock, &(peerInfo->addr_len), sizeof(peerInfo->addr_len), MSG_WAITALL);
-	CHKERR_ACTION(ret == -1, "[ERROR]: unable to recive peer address length @ server_handshake()\n", exit(EXIT_FAILURE));
+	CHKERR_ACTION(ret == -1, "[ERROR]: unable to recive peer address length @ host_handshake()\n", exit(EXIT_FAILURE));
 
 	peerInfo->peer_addr = malloc(peerInfo->addr_len);
 	ret = recv(dsock, peerInfo->peer_addr, peerInfo->addr_len, MSG_WAITALL);
-	CHKERR_ACTION(ret == -1, "[ERROR]: unable to recive peer address @ server_handshake()\n", exit(EXIT_FAILURE));
+	CHKERR_ACTION(ret == -1, "[ERROR]: unable to recive peer address @ host_handshake()\n", exit(EXIT_FAILURE));
 
 #ifdef __DEBUG__
 	sendTestMessage(dsock, 1);
@@ -159,7 +158,7 @@ peerAddrInfo *server_handshake_single(uint16_t server_port)
 
 
 
-void client_handshake_single(const char *server, uint16_t server_port, ucp_worker_h worker)
+void device_handshake(const char *server, uint16_t server_port, ucp_worker_h worker)
 {
 	ucp_address_t *local_addr;
 	uint64_t addr_len = 0;
@@ -167,8 +166,6 @@ void client_handshake_single(const char *server, uint16_t server_port, ucp_worke
 	struct hostent *he;
 	int connfd = -1;
 	int ret = 0;
-
-	peerAddrInfo *peerInfo = (peerAddrInfo *)malloc(sizeof(peerAddrInfo));
 
 	connfd = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -181,15 +178,15 @@ void client_handshake_single(const char *server, uint16_t server_port, ucp_worke
 	memset(conn_addr.sin_zero, 0, sizeof(conn_addr.sin_zero));
 
 	ret = connect(connfd, (struct sockaddr *)&conn_addr, sizeof(conn_addr));
-	CHKERR_ACTION(ret != 0, "[ERROR]: unable to connect to socket @clien_handshake()\n", exit(EXIT_FAILURE));
+	CHKERR_ACTION(ret != 0, "[ERROR]: unable to connect to socket @device_handshake()\n", exit(EXIT_FAILURE));
 
 	ret = ucp_worker_get_address(worker, &local_addr, &addr_len);
-	CHKERR_ACTION(ret != UCS_OK, "[ERROR]: unable to get worker local addresss @client_handshake()\n", exit(EXIT_FAILURE));
+	CHKERR_ACTION(ret != UCS_OK, "[ERROR]: unable to get worker local addresss @device_handshake()\n", exit(EXIT_FAILURE));
 
 	ret = send(connfd, &addr_len, sizeof(addr_len), 0);
-	CHKERR_ACTION(ret == -1, "[ERROR]: unable to send local addresss length @client_handshake()\n", exit(EXIT_FAILURE));
+	CHKERR_ACTION(ret == -1, "[ERROR]: unable to send local addresss length @device_handshake()\n", exit(EXIT_FAILURE));
 	ret = send(connfd, local_addr, addr_len, 0);
-	CHKERR_ACTION(ret == -1, "[ERROR]: unable to send local addresss @client_handshake()\n", exit(EXIT_FAILURE));
+	CHKERR_ACTION(ret == -1, "[ERROR]: unable to send local addresss @device_handshake()\n", exit(EXIT_FAILURE));
 
 #ifdef __DEBUG__
 	reciveTestMessage(connfd);

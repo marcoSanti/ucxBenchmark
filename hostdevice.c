@@ -1,8 +1,20 @@
 #include "ucxHelper.h"
 #include <sys/time.h>
 
-#define __SERVER_PORT__ 12345
-#define __SERVER_PORT__CLIENT__ 54321
+/**
+ * This file is an alternate version in which a two way handshakle is not required. 
+ * In this case, there are two endpoints:
+ * 	DEVICE (-d): the rereciving part of the communication
+ * 	HOST (-h): the sending part of the communication
+ * 
+ * To use the woftware, two process must be launched as follows:
+ * 
+ *	(DEVICE) ./benchmark1 -d <host ip address>
+	(HOST) ./benchmark1 -h  <send_iteration> <transfer_window_size>
+ * 
+ */
+
+#define __DEVICE_PORT__ 12345
 #define __TEMP_FILE_NAME__ "temp.dat"
 
 extern int errno;
@@ -74,18 +86,13 @@ int main(int argc, char *argv[])
 
 	printf("[info] Worker created\n");
 
-	if (strcmp(argv[1], "-s") == 0) // server
+	if (strcmp(argv[1], "-d") == 0) // Remote reciving device
 	{
+
+
+		device_handshake(argv[2], __DEVICE_PORT__, worker);
 	
-		peerInfo = server_handshake_single(__SERVER_PORT__);
-		printf("[INFO] Server: obtained client informations\n");
-
-		client_handshake_single(argv[2], __SERVER_PORT__CLIENT__, worker);
-		printf("[INFO] Server: sent self informations\n");
-
-		endpoint = getEndpoint(worker, peerInfo, UCP_EP_PARAM_FIELD_REMOTE_ADDRESS);
-		printf("[INFO] Server: created client endpoint\n");
-		printf("[INFO] Server is ready to comunicate\n");
+		printf("[INFO] DEVICE is ready to comunicate\n");
 
 		ucp_request_param_t *recvParam = getTagSendReciveParametersSingle(
 			UCP_OP_ATTR_FIELD_CALLBACK | UCP_OP_ATTR_FIELD_DATATYPE | UCP_OP_ATTR_FIELD_USER_DATA,
@@ -94,20 +101,17 @@ int main(int argc, char *argv[])
 
 		int iterations = 0, winSize = 0;
 
-		// recive of bufferSize
 
+		// recive of bufferSize
 		waitForMessageWithTag(worker, SETUP_TAG, TAG_MASK_BITS, NULL);
 		request_status = ucp_tag_recv_nbx(worker, &iterations, sizeof(iterations), SETUP_TAG, TAG_MASK_BITS, recvParam);
 		ucpWait(worker, request_status, &requestContext);
-		printf("[INFO] Recived configs to server:\tsendIterations->%d\n", iterations);
-
 		// recive of winsize
 		waitForMessageWithTag(worker, SETUP_TAG, TAG_MASK_BITS, NULL);
 		request_status = ucp_tag_recv_nbx(worker, &winSize, sizeof(winSize), SETUP_TAG, TAG_MASK_BITS, recvParam);
-		printf("[INFO] Recived configs to server:\twindow size->%d\n", winSize);
 
 		long int transferSize = iterations * winSize;
-		printf("[INFO] Recived config from client: \n\tsendIterations: %d,\n\twinSize: %d,\n\ttotal transfer size:%ld\n", iterations, winSize, transferSize);
+		printf("[INFO] Recived config from HOST: \n\tsendIterations: %d,\n\twinSize: %d,\n\ttotal transfer size:%ld\n", iterations, winSize, transferSize);
 
 		gettimeofday(&start, NULL);
 		for (int i = 0; i < iterations; i++)
@@ -125,26 +129,23 @@ int main(int argc, char *argv[])
 
 		
 	}
-	else if ((strcmp(argv[1], "-c") == 0) && argc == 5)
+	else if ((strcmp(argv[1], "-h") == 0) && argc == 4)
 	{
-		client_handshake_single(argv[2], __SERVER_PORT__, worker);
-		printf("[INFO] client: sent self informations\n");
 
-		peerInfo = server_handshake_single(__SERVER_PORT__CLIENT__);
-		printf("[INFO] client: obtained client informations\n");
+		peerInfo = host_handshake(__DEVICE_PORT__);
+		printf("[INFO] HOST: obtained DEVICE informations\n");
 
 		
 		endpoint = getEndpoint(worker, peerInfo, UCP_EP_PARAM_FIELD_REMOTE_ADDRESS);
-		printf("[INFO] Client: created server informations\n");
-		printf("[INFO] client is ready to comunicate\n");
+		printf("[INFO] HOST ready to comunicate\n");
 
 		ucp_request_param_t *sendParam = getTagSendReciveParametersSingle(
 			UCP_OP_ATTR_FIELD_CALLBACK | UCP_OP_ATTR_FIELD_DATATYPE | UCP_OP_ATTR_FIELD_USER_DATA,
 			&requestContext,
 			default_send_handler);
 
-		int iterations = atoi(argv[3]);
-		int winsize = atoi(argv[4]);
+		int iterations = atoi(argv[2]);
+		int winsize = atoi(argv[3]);
 
 		long int transferSize = iterations * winsize;
 
@@ -154,12 +155,12 @@ int main(int argc, char *argv[])
 		request_status = ucp_tag_send_nbx(endpoint, &iterations, sizeof(iterations), SETUP_TAG, sendParam);
 		ucpWait(worker, request_status, &requestContext);
 
-		printf("[INFO] Sent configs to server:\tsendIterations->%d\n", iterations);
+		printf("[INFO] Sent configs to DEVICE:\tsendIterations->%d\n", iterations);
 
 		// now i sent the windowsSize
 		request_status = ucp_tag_send_nbx(endpoint, &winsize, sizeof(winsize), SETUP_TAG, sendParam);
 		ucpWait(worker, request_status, &requestContext);
-		printf("[INFO] Sent configs to server:\twindow size->%d\n", winsize);
+		printf("[INFO] Sent configs to DEVICE:\twindow size->%d\n", winsize);
 
 		printf("[INFO] Total transfer size: %d\n", winsize * iterations);
 

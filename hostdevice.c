@@ -7,10 +7,10 @@
  * 	DEVICE (-d): the rereciving part of the communication
  * 	HOST (-h): the sending part of the communication
  * 
- * To use the woftware, two process must be launched as follows:
+ * To use the woftware, two process must be launched as follows (launch first the host side process):
  * 
- *	(DEVICE) ./benchmark1 -d <host ip address>
-	(HOST) ./benchmark1 -h  <send_iteration> <transfer_window_size>
+ *	(DEVICE) ./hostdevice -d <host ip address>
+	(HOST) ./hostdevice -h  <send_iteration> <transfer_window_size>
  * 
  */
 

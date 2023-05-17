@@ -73,6 +73,16 @@ int main(int argc, char *argv[])
 
 	printf("[info] Worker created\n");
 
+	ucp_request_param_t *recvParam = getTagSendReciveParametersSingle(
+			UCP_OP_ATTR_FIELD_CALLBACK | UCP_OP_ATTR_FIELD_DATATYPE | UCP_OP_ATTR_FIELD_USER_DATA,
+			&requestContext,
+			default_recv_handler);
+
+	ucp_request_param_t *sendParam = getTagSendReciveParametersSingle(
+			UCP_OP_ATTR_FIELD_CALLBACK | UCP_OP_ATTR_FIELD_DATATYPE | UCP_OP_ATTR_FIELD_USER_DATA,
+			&requestContext,
+			default_send_handler);
+
 	if (strcmp(argv[1], "-s") == 0) // server
 	{
 	
@@ -82,12 +92,7 @@ int main(int argc, char *argv[])
 		printf("[INFO] Server: created client endpoint\n");
 		printf("[INFO] Server is ready to comunicate\n");
 
-		ucp_request_param_t *recvParam = getTagSendReciveParametersSingle(
-			UCP_OP_ATTR_FIELD_CALLBACK | UCP_OP_ATTR_FIELD_DATATYPE | UCP_OP_ATTR_FIELD_USER_DATA,
-			&requestContext,
-			default_recv_handler);
-
-		int iterations = 0, winSize = 0;
+		int iterations = 0, winsize = 0;
 
 		// recive of bufferSize
 
@@ -98,23 +103,28 @@ int main(int argc, char *argv[])
 
 		// recive of winsize
 		waitForMessageWithTag(worker, SETUP_TAG, TAG_MASK_BITS, NULL);
-		request_status = ucp_tag_recv_nbx(worker, &winSize, sizeof(winSize), SETUP_TAG, TAG_MASK_BITS, recvParam);
-		printf("[INFO] Recived configs to server:\twindow size->%d\n", winSize);
+		request_status = ucp_tag_recv_nbx(worker, &winsize, sizeof(winsize), SETUP_TAG, TAG_MASK_BITS, recvParam);
+		printf("[INFO] Recived configs to server:\twindow size->%d\n", winsize);
 
-		long int transferSize = iterations * winSize;
-		printf("[INFO] Recived config from client: \n\tsendIterations: %d,\n\twinSize: %d,\n\ttotal transfer size:%ld\n", iterations, winSize, transferSize);
+		long int transferSize = iterations * winsize;
+		printf("[INFO] Recived config from client: \n\tsendIterations: %d,\n\twinSize: %d,\n\ttotal transfer size:%ld\n", iterations, winsize, transferSize);
+
+		char* bufferRx = (char*)malloc(winsize);
 
 		gettimeofday(&start, NULL);
 		for (int i = 0; i < iterations; i++)
 		{
-			// probe for last message incoming
+			
 			waitForMessageWithTag(worker, DATA_SEND_TAG, TAG_MASK_BITS, NULL);
-			request_status = ucp_tag_recv_nbx(worker, &winSize, sizeof(winSize), DATA_SEND_TAG, TAG_MASK_BITS, recvParam);
+			request_status = ucp_tag_recv_nbx(worker, bufferRx, winsize, DATA_SEND_TAG, TAG_MASK_BITS, recvParam);
+			ucpWait(worker, request_status, &requestContext);
+
+			request_status = ucp_tag_send_nbx(endpoint, bufferRx, winsize, DATA_SEND_TAG, sendParam);
 			ucpWait(worker, request_status, &requestContext);
 		}
 		gettimeofday(&end, NULL);
 		double elapsedTime = (end.tv_sec + 0.000001 * end.tv_usec) - (start.tv_sec + 0.000001 * start.tv_usec);
-		double bandwidth = transferSize / elapsedTime;
+		double bandwidth = 2*transferSize / elapsedTime; 
 
 		printf("Completed!\n[RESULT] Time elapsed to recive %ld bytes: \n\t%lf seconds.\n\tBandwidth= %.2lf MBytes/s (%.2lf Mbit/s)\n", transferSize, elapsedTime, bandwidth / (1024 * 1024), 8*bandwidth/1e6);
 
@@ -128,10 +138,6 @@ int main(int argc, char *argv[])
 		printf("[INFO] Client: created server informations\n");
 		printf("[INFO] client is ready to comunicate\n");
 
-		ucp_request_param_t *sendParam = getTagSendReciveParametersSingle(
-			UCP_OP_ATTR_FIELD_CALLBACK | UCP_OP_ATTR_FIELD_DATATYPE | UCP_OP_ATTR_FIELD_USER_DATA,
-			&requestContext,
-			default_send_handler);
 
 		int iterations = atoi(argv[3]);
 		int winsize = atoi(argv[4]);
@@ -158,6 +164,7 @@ int main(int argc, char *argv[])
 
 		unsigned long int filePosition = 0;
 		char *buffer = malloc(winsize);
+		char *bufferRx = malloc(winsize);
 
 		gettimeofday(&start, NULL);
 
@@ -168,6 +175,10 @@ int main(int argc, char *argv[])
 
 			request_status = ucp_tag_send_nbx(endpoint, buffer, winsize, DATA_SEND_TAG, sendParam);
 			ucpWait(worker, request_status, &requestContext);
+			
+			request_status =  ucp_tag_recv_nbx(worker, bufferRx, winsize, DATA_SEND_TAG, TAG_MASK_BITS, recvParam);
+			ucpWait(worker, request_status, &requestContext);
+
 
 			filePosition += winsize;
 		}
@@ -176,7 +187,7 @@ int main(int argc, char *argv[])
 		
 
 		double elapsedTime = (end.tv_sec + 0.000001 * end.tv_usec) - (start.tv_sec + 0.000001 * start.tv_usec);
-		double bandwidth = transferSize / elapsedTime;
+		double bandwidth = 2 * transferSize / elapsedTime;
 
 		printf("Completed!\n[RESULT] Time elapsed to send %ld bytes: \n\t%lf seconds.\n\tBandwidth= %.2lf MBytes/s (%.2lf Mbit/s)\n", transferSize, elapsedTime, bandwidth / (1024 * 1024), 8*bandwidth/1e6);
 		

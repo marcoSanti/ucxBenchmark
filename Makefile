@@ -38,4 +38,4 @@ ucxHelper.o: ucxHelper.c
 
 
 clean:
-	rm -f *.o *.dat test testDebug benchmarkDebug ucxHelper benchmark hostdevice hostdeviceDebug benchmarkDebug1*~ 
+	rm -f *.o *.dat test testDebug benchmarkDebug ucxHelper benchmark hostdevice hostdeviceDebug benchmarkDebug1  

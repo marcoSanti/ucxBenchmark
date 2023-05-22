@@ -123,6 +123,8 @@ int main(int argc, char *argv[])
 			ucpWait(worker, request_status, &requestContext);
 		}
 		gettimeofday(&end, NULL);
+
+		free(bufferRx);
 		double elapsedTime = (end.tv_sec + 0.000001 * end.tv_usec) - (start.tv_sec + 0.000001 * start.tv_usec);
 		double bandwidth = 2*transferSize / elapsedTime; 
 
@@ -185,7 +187,8 @@ int main(int argc, char *argv[])
 
 		gettimeofday(&end, NULL);
 		
-
+		free(buffer);
+		free(bufferRx);
 		double elapsedTime = (end.tv_sec + 0.000001 * end.tv_usec) - (start.tv_sec + 0.000001 * start.tv_usec);
 		double bandwidth = 2 * transferSize / elapsedTime;
 

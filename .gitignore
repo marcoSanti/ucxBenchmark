@@ -6,3 +6,4 @@ benchmark
 ucxHelper
 benchmarkDebug
 testDebug
+benchmarkNoFS

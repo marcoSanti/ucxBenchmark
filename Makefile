@@ -8,6 +8,9 @@ ucxInclude=-L$(UCX_PATH)/lib -I$(UCX_PATH)/include -lucp -lucs -luct
 benchmark: ucxHelper.o benchmark.o
 	$(CC) benchmark.o ucxHelper.o $(ucxInclude) -o benchmark
 
+benchmarkNoFs: ucxHelper.o benchmarkNoFs.o
+	$(CC) benchmarkNoFs.o ucxHelper.o $(ucxInclude) -o benchmarkNoFs
+
 hostdevice: ucxHelper.o hostdevice.o
 	$(CC) hostdevice.o ucxHelper.o $(ucxInclude) -o hostdevice
 
@@ -26,6 +29,9 @@ hostdevice.o: hostdevice.c
 benchmark.o: benchmark.c
 	$(CC) benchmark.c -c $(ucxInclude) -o benchmark.o
 
+benchmarkNoFs.o: benchmarkNoFS.c
+	$(CC) benchmarkNoFS.c -c $(ucxInclude) -o benchmarkNoFs.o
+
 test: test.o ucxHelper.o
 	$(CC) test.o ucxHelper.o $(ucxInclude) -o test
 
@@ -38,4 +44,4 @@ ucxHelper.o: ucxHelper.c
 
 
 clean:
-	rm -f *.o *.dat test testDebug benchmarkDebug ucxHelper benchmark hostdevice hostdeviceDebug benchmarkDebug1  
+	rm -f *.o *.dat test testDebug benchmarkDebug ucxHelper benchmark hostdevice hostdeviceDebug benchmarkDebug1 benchmarkNoFS  
